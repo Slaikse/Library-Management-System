@@ -21,6 +21,7 @@ func main() {
 	r.HandleFunc("/book/{id}", deleteBookHandler).Methods("DELETE")
 	r.HandleFunc("/genres", getGenresHandler).Methods("GET")
 	r.HandleFunc("/books/genre/{genre}", getBooksByGenreHandler).Methods("GET")
+	r.HandleFunc("/books/search", searchBooksHandler).Methods("GET")
 
 	// Запуск сервера
 	fmt.Println("Server is running on port 8080")
@@ -83,6 +84,20 @@ func getBooksByGenreHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	genre := vars["genre"]
 	books, err := getBooksByGenre(genre)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(books)
+}
+
+func searchBooksHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q") // Извлекаем поисковый запрос из параметров URL
+	if query == "" {
+		http.Error(w, "Query parameter 'q' is missing", http.StatusBadRequest)
+		return
+	}
+	books, err := searchBooks(query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

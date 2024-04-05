@@ -77,20 +77,29 @@ func getAllBooks() ([]Book, error) {
 	return books, err
 }
 
-// Поиск книг по названию или автору
+// searchBooks осуществляет поиск книг по ключевому слову в названии и авторе
 func searchBooks(query string) ([]Book, error) {
-	var foundBooks []Book
-	books, err := getAllBooks()
+	var matchedBooks []Book
+	err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("Books"))
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			var book Book
+			if err := json.Unmarshal(v, &book); err != nil {
+				return err
+			}
+			if strings.Contains(strings.ToLower(book.Title), strings.ToLower(query)) ||
+				strings.Contains(strings.ToLower(book.Author), strings.ToLower(query)) {
+				matchedBooks = append(matchedBooks, book)
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	for _, book := range books {
-		if contains(book.Title, query) || contains(book.Author, query) {
-			foundBooks = append(foundBooks, book)
-		}
-	}
-	return foundBooks, nil
+	return matchedBooks, nil
 }
 
 // Удаление книги по ID
